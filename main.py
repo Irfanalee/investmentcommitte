@@ -29,23 +29,29 @@ def load_environment():
     """Load environment variables and validate configuration"""
     load_dotenv()
 
-    llm_provider = os.getenv("LLM_PROVIDER", "anthropic").lower()
+    # Get per-agent provider configuration
+    bull_provider = os.getenv("BULL_PROVIDER", "anthropic").lower()
+    bear_provider = os.getenv("BEAR_PROVIDER", "anthropic").lower()
+    pm_provider = os.getenv("PM_PROVIDER", "openai").lower()
 
-    if llm_provider == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
+    providers = {bull_provider, bear_provider, pm_provider}
+
+    # Validate API keys for providers in use
+    if "openai" in providers:
+        if not os.getenv("OPENAI_API_KEY"):
             console.print("[red]ERROR: OPENAI_API_KEY not found in .env file[/red]")
             sys.exit(1)
-    elif llm_provider == "anthropic":
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
+
+    if "anthropic" in providers:
+        if not os.getenv("ANTHROPIC_API_KEY"):
             console.print("[red]ERROR: ANTHROPIC_API_KEY not found in .env file[/red]")
             sys.exit(1)
-    else:
-        console.print(f"[red]ERROR: Unknown LLM_PROVIDER: {llm_provider}[/red]")
-        sys.exit(1)
 
-    return llm_provider
+    return {
+        "bull": bull_provider,
+        "bear": bear_provider,
+        "pm": pm_provider
+    }
 
 
 def display_header():
@@ -229,7 +235,7 @@ def display_final_decision(decision):
     console.print(justification_panel)
 
 
-def run_investment_committee(ticker: str, llm_provider: str):
+def run_investment_committee(ticker: str, providers: dict):
     """
     Main orchestrator for the Investment Committee.
 
@@ -241,7 +247,7 @@ def run_investment_committee(ticker: str, llm_provider: str):
 
     Args:
         ticker: Stock ticker symbol
-        llm_provider: LLM provider to use
+        providers: Dict with 'bull', 'bear', 'pm' provider settings
     """
     console.print(f"\n[bold cyan]🔍 Analyzing {ticker.upper()}...[/bold cyan]\n")
 
@@ -256,11 +262,15 @@ def run_investment_committee(ticker: str, llm_provider: str):
     display_financial_data(metrics)
     financial_data = format_metrics_for_agent(metrics)
 
-    # STEP 2: Initialize agents
+    # STEP 2: Initialize agents with different providers
     console.print("\n[bold]🤖 Initializing AI Agents...[/bold]")
-    bull_agent = BullAgent(llm_provider=llm_provider)
-    bear_agent = BearAgent(llm_provider=llm_provider)
-    pm_agent = PortfolioManagerAgent(llm_provider=llm_provider)
+    console.print(f"[dim]  🐂 Bull: {providers['bull'].upper()}[/dim]")
+    console.print(f"[dim]  🐻 Bear: {providers['bear'].upper()}[/dim]")
+    console.print(f"[dim]  ⚖️  PM: {providers['pm'].upper()}[/dim]\n")
+
+    bull_agent = BullAgent(llm_provider=providers['bull'])
+    bear_agent = BearAgent(llm_provider=providers['bear'])
+    pm_agent = PortfolioManagerAgent(llm_provider=providers['pm'])
 
     # STEP 3: Parallel analysis (initial theses)
     console.print("\n[bold yellow]📡 Phase 1: Initial Analysis (Parallel)[/bold yellow]\n")
@@ -292,8 +302,8 @@ def main():
     display_header()
 
     # Load configuration
-    llm_provider = load_environment()
-    console.print(f"[dim]Using LLM Provider: {llm_provider.upper()}[/dim]\n")
+    providers = load_environment()
+    console.print("[dim]Multi-LLM Configuration Loaded[/dim]\n")
 
     while True:
         ticker = Prompt.ask("\n[bold cyan]Enter stock ticker (or 'quit' to exit)[/bold cyan]").strip()
@@ -307,7 +317,7 @@ def main():
             continue
 
         try:
-            run_investment_committee(ticker, llm_provider)
+            run_investment_committee(ticker, providers)
         except KeyboardInterrupt:
             console.print("\n[yellow]Analysis interrupted by user.[/yellow]")
         except Exception as e:
