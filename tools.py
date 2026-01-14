@@ -27,22 +27,55 @@ def get_financial_metrics(ticker: str) -> FinancialMetrics:
     Fetch comprehensive financial metrics for a given stock ticker.
 
     Args:
-        ticker: Stock ticker symbol (e.g., "NVDA", "AAPL")
+        ticker: Stock ticker symbol (e.g., "NVDA", "AAPL", "SAAB-B.ST")
 
     Returns:
         FinancialMetrics object with all available data
     """
     try:
-        stock = yf.Ticker(ticker)
+        # Auto-correct common international ticker formats
+        # Swedish stocks (e.g., SAAB-B -> SAAB-B.ST)
+        if '-' in ticker and '.' not in ticker:
+            # Try adding Stockholm exchange suffix
+            ticker_variants = [ticker, f"{ticker}.ST"]
+        else:
+            ticker_variants = [ticker]
+
+        # Try each variant
+        stock = None
+        working_ticker = ticker
+        for variant in ticker_variants:
+            try:
+                test_stock = yf.Ticker(variant)
+                test_info = test_stock.info
+                # Check if we got valid data
+                if test_info.get('currentPrice') or test_info.get('regularMarketPrice'):
+                    stock = test_stock
+                    working_ticker = variant
+                    break
+            except:
+                continue
+
+        if stock is None:
+            stock = yf.Ticker(ticker)
+            working_ticker = ticker
         info = stock.info
 
         # Fetch recent news (last 5 headlines)
         news = stock.news[:5] if hasattr(stock, 'news') and stock.news else []
-        headlines = [article.get('title', 'No title') for article in news]
+        headlines = []
+        for article in news:
+            # Try different paths for title (yfinance API structure varies)
+            title = (
+                article.get('title') or
+                article.get('content', {}).get('title') or
+                'No title available'
+            )
+            headlines.append(title)
 
         # Extract key metrics with safe fallbacks
         metrics = FinancialMetrics(
-            ticker=ticker.upper(),
+            ticker=working_ticker.upper(),
             current_price=info.get('currentPrice') or info.get('regularMarketPrice'),
             pe_ratio=info.get('trailingPE') or info.get('forwardPE'),
             week_52_high=info.get('fiftyTwoWeekHigh'),

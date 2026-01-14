@@ -138,7 +138,8 @@ Be balanced but decisive. Don't hedge excessively."""
     def _call_anthropic(self, user_message: str) -> str:
         """Call Anthropic API"""
         client = self._get_client()
-        model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620")
+        # Use env variable or default to working model
+        model = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
 
         response = client.messages.create(
             model=model,

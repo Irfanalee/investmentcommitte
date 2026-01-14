@@ -77,3 +77,7 @@ logs/
 Thumbs.db
 .Spotlight-V100
 .Trashes
+
+#tests
+test_*
+TESTING_COMPLETE.MD
