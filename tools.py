@@ -5,6 +5,20 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import yfinance as yf
 from pydantic import BaseModel, Field
+import sys
+import os
+from contextlib import contextmanager
+
+@contextmanager
+def suppress_stderr():
+    """Temporarily suppress stderr output from yfinance"""
+    stderr = sys.stderr
+    sys.stderr = open(os.devnull, 'w')
+    try:
+        yield
+    finally:
+        sys.stderr.close()
+        sys.stderr = stderr
 
 
 class FinancialMetrics(BaseModel):
@@ -41,25 +55,35 @@ def get_financial_metrics(ticker: str) -> FinancialMetrics:
         else:
             ticker_variants = [ticker]
 
-        # Try each variant
+        # Try each variant (suppress yfinance error output)
         stock = None
         working_ticker = ticker
-        for variant in ticker_variants:
-            try:
-                test_stock = yf.Ticker(variant)
-                test_info = test_stock.info
-                # Check if we got valid data
-                if test_info.get('currentPrice') or test_info.get('regularMarketPrice'):
-                    stock = test_stock
-                    working_ticker = variant
-                    break
-            except:
-                continue
 
-        if stock is None:
-            stock = yf.Ticker(ticker)
-            working_ticker = ticker
-        info = stock.info
+        with suppress_stderr():
+            for variant in ticker_variants:
+                try:
+                    test_stock = yf.Ticker(variant)
+                    test_info = test_stock.info
+                    # Check if we got valid data
+                    if test_info.get('currentPrice') or test_info.get('regularMarketPrice'):
+                        stock = test_stock
+                        working_ticker = variant
+                        break
+                except:
+                    continue
+
+            if stock is None:
+                stock = yf.Ticker(ticker)
+                working_ticker = ticker
+
+            info = stock.info
+
+        # Validate that we got actual stock data
+        if not info or (not info.get('currentPrice') and not info.get('regularMarketPrice')):
+            return FinancialMetrics(
+                ticker=working_ticker.upper(),
+                error=f"Ticker '{working_ticker}' not found. Please verify the symbol is correct."
+            )
 
         # Fetch recent news (last 5 headlines)
         news = stock.news[:5] if hasattr(stock, 'news') and stock.news else []
@@ -89,10 +113,18 @@ def get_financial_metrics(ticker: str) -> FinancialMetrics:
         return metrics
 
     except Exception as e:
-        return FinancialMetrics(
-            ticker=ticker.upper(),
-            error=f"Failed to fetch data: {str(e)}"
-        )
+        error_msg = str(e)
+        # Provide user-friendly error messages
+        if "404" in error_msg or "Not Found" in error_msg:
+            return FinancialMetrics(
+                ticker=ticker.upper(),
+                error=f"Ticker '{ticker}' not found. Please check the symbol and try again."
+            )
+        else:
+            return FinancialMetrics(
+                ticker=ticker.upper(),
+                error=f"Failed to fetch data: {error_msg}"
+            )
 
 
 def format_metrics_for_agent(metrics: FinancialMetrics) -> str:

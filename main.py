@@ -256,7 +256,16 @@ def run_investment_committee(ticker: str, providers: dict):
         metrics = get_financial_metrics(ticker)
 
     if metrics.error:
-        console.print(f"[red]Failed to fetch data for {ticker}: {metrics.error}[/red]")
+        console.print(Panel(
+            f"[red]✗ {metrics.error}[/red]\n\n"
+            "[yellow]Suggestions:[/yellow]\n"
+            "• Verify the ticker symbol is correct\n"
+            "• For international stocks, include exchange suffix (e.g., SAAB-B.ST)\n"
+            "• Try searching on Yahoo Finance: https://finance.yahoo.com",
+            title="⚠️  Stock Not Found",
+            border_style="red",
+            box=box.ROUNDED
+        ))
         return
 
     display_financial_data(metrics)
