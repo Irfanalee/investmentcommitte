@@ -24,10 +24,12 @@ build/
 *.swo
 
 # Testing
+tests/
 .pytest_cache/
 .coverage
 htmlcov/
-test_*.py
+conftest.py
+pyproject.toml
 
 # Documentation (not needed in container)
 *.md

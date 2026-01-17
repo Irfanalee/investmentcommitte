@@ -1,13 +1,14 @@
 """
 Data Layer: Financial data fetching using yfinance
 """
-from typing import Dict, List, Optional
+import os
+import sys
+from contextlib import contextmanager
 from datetime import datetime
+
 import yfinance as yf
 from pydantic import BaseModel, Field
-import sys
-import os
-from contextlib import contextmanager
+
 
 @contextmanager
 def suppress_stderr():
@@ -24,16 +25,16 @@ def suppress_stderr():
 class FinancialMetrics(BaseModel):
     """Structured financial data for a stock ticker"""
     ticker: str
-    current_price: Optional[float] = None
-    pe_ratio: Optional[float] = None
-    week_52_high: Optional[float] = None
-    week_52_low: Optional[float] = None
-    market_cap: Optional[float] = None
-    volume: Optional[int] = None
-    avg_volume: Optional[int] = None
-    news_headlines: List[str] = Field(default_factory=list)
+    current_price: float | None = None
+    pe_ratio: float | None = None
+    week_52_high: float | None = None
+    week_52_low: float | None = None
+    market_cap: float | None = None
+    volume: int | None = None
+    avg_volume: int | None = None
+    news_headlines: list[str] = Field(default_factory=list)
     fetch_timestamp: datetime = Field(default_factory=datetime.now)
-    error: Optional[str] = None
+    error: str | None = None
 
 
 def get_financial_metrics(ticker: str) -> FinancialMetrics:
@@ -69,7 +70,7 @@ def get_financial_metrics(ticker: str) -> FinancialMetrics:
                         stock = test_stock
                         working_ticker = variant
                         break
-                except:
+                except Exception:
                     continue
 
             if stock is None:

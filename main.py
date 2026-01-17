@@ -3,24 +3,21 @@ The Investment Committee - Main Orchestrator
 Multi-Agent System for Stock Analysis
 """
 import os
+import re
 import sys
-from typing import Tuple
+
 from dotenv import load_dotenv
+from rich import box
+from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
-from rich.columns import Columns
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt
-from rich.markdown import Markdown
-from rich.layout import Layout
-from rich import box
+from rich.table import Table
 from rich.text import Text
-import re
 
-from tools import get_financial_metrics, format_metrics_for_agent
-from agents import BullAgent, BearAgent, PortfolioManagerAgent, AgentResponse
-
+from agents import AgentResponse, BearAgent, BullAgent, PortfolioManagerAgent
+from tools import format_metrics_for_agent, get_financial_metrics
 
 console = Console()
 
@@ -110,7 +107,7 @@ def run_parallel_analysis(
     financial_data: str,
     bull_agent: BullAgent,
     bear_agent: BearAgent
-) -> Tuple[AgentResponse, AgentResponse]:
+) -> tuple[AgentResponse, AgentResponse]:
     """
     Run Bull and Bear analysis in parallel (simulated).
 
@@ -147,7 +144,7 @@ def run_rebuttal_phase(
     bear_agent: BearAgent,
     initial_bull: AgentResponse,
     initial_bear: AgentResponse
-) -> Tuple[AgentResponse, AgentResponse]:
+) -> tuple[AgentResponse, AgentResponse]:
     """
     Run rebuttal phase where agents counter each other's arguments.
 

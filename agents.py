@@ -1,10 +1,10 @@
 """
 Agent Layer: Bull, Bear, and Portfolio Manager AI Agents
 """
-from typing import Optional, Literal
-from pydantic import BaseModel
 import os
 from enum import Enum
+
+from pydantic import BaseModel
 
 
 class AgentRole(str, Enum):
@@ -32,7 +32,7 @@ class PortfolioDecision(BaseModel):
     """Final decision from Portfolio Manager"""
     decision: Decision
     justification: str
-    confidence: Optional[str] = None
+    confidence: str | None = None
 
 
 class Agent:
@@ -180,7 +180,7 @@ class BullAgent(Agent):
     def __init__(self, llm_provider: str = "anthropic"):
         super().__init__(AgentRole.BULL, llm_provider)
 
-    def analyze(self, financial_data: str, bear_thesis: Optional[str] = None) -> AgentResponse:
+    def analyze(self, financial_data: str, bear_thesis: str | None = None) -> AgentResponse:
         """
         Analyze stock data from a bullish perspective.
 
@@ -215,7 +215,7 @@ class BearAgent(Agent):
     def __init__(self, llm_provider: str = "anthropic"):
         super().__init__(AgentRole.BEAR, llm_provider)
 
-    def analyze(self, financial_data: str, bull_thesis: Optional[str] = None) -> AgentResponse:
+    def analyze(self, financial_data: str, bull_thesis: str | None = None) -> AgentResponse:
         """
         Analyze stock data from a bearish perspective.
 
