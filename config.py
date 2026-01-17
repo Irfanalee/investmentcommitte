@@ -2,9 +2,10 @@
 Configuration management for The Investment Committee
 """
 import os
-from typing import Literal
+from typing import Literal, cast
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+
 
 
 class LLMConfig(BaseModel):
@@ -25,7 +26,7 @@ class LLMConfig(BaseModel):
             raise ValueError(f"Invalid LLM_PROVIDER: {provider}. Must be 'openai' or 'anthropic'")
 
         return cls(
-            provider=provider,
+            provider=cast(Literal["openai", "anthropic"], provider),
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
             openai_model=os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview"),
