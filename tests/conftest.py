@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture
 def sample_financial_metrics():
     """Create a sample FinancialMetrics object for testing"""
-    from tools import FinancialMetrics
+    from src.investment_committee import FinancialMetrics
 
     return FinancialMetrics(
         ticker="AAPL",
@@ -32,7 +32,7 @@ def sample_financial_metrics():
 @pytest.fixture
 def sample_metrics_with_error():
     """Create a FinancialMetrics object with an error"""
-    from tools import FinancialMetrics
+    from src.investment_committee import FinancialMetrics
 
     return FinancialMetrics(
         ticker="INVALID",

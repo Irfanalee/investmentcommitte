@@ -21,7 +21,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY *.py ./
+COPY main.py ./
+COPY src/ ./src/
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash appuser && \

@@ -16,6 +16,19 @@ cp .env.example .env
 python main.py
 ```
 
+### Docker
+
+```bash
+# Build
+docker build -t investment-committee .
+
+# Run
+docker run -it --env-file .env investment-committee
+
+# Or with docker-compose
+docker-compose run --rm investment-committee
+```
+
 ## Features
 
 - **Real-time Data**: Live stock prices, P/E ratios, 52-week ranges, news headlines
@@ -23,6 +36,7 @@ python main.py
 - **Mixed LLM Support**: Use different providers per agent (Anthropic + OpenAI)
 - **International Stocks**: Auto-correction for Swedish stocks (e.g., SAAB-B → SAAB-B.ST)
 - **Beautiful UI**: Rich terminal interface with side-by-side debate view
+- **Docker Support**: Containerized for consistent deployment
 
 ## Architecture
 
@@ -72,12 +86,51 @@ python main.py
 
 ```
 InvestmentCommitte/
-├── main.py              # Orchestrator + UI
-├── agents.py            # Bull, Bear, PM agents
-├── tools.py             # yfinance data layer
-├── config.py            # Environment config
-├── requirements.txt     # Dependencies
-└── .env                 # API keys (gitignored)
+├── main.py                      # Entry point + UI orchestration
+├── src/
+│   └── investment_committee/    # Core package
+│       ├── __init__.py          # Package exports
+│       ├── agents.py            # Bull, Bear, PM agents
+│       ├── tools.py             # yfinance data layer
+│       └── config.py            # Environment config
+├── tests/                       # Unit tests
+│   ├── conftest.py              # Shared fixtures
+│   ├── test_agents.py           # Agent tests
+│   ├── test_config.py           # Config tests
+│   └── test_tools.py            # Tools tests
+├── requirements.txt             # Dependencies
+├── pyproject.toml               # Ruff & pytest config
+├── Dockerfile                   # Container build
+├── docker-compose.yml           # Container orchestration
+└── .env                         # API keys (gitignored)
+```
+
+## Development
+
+### Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_agents.py -v
+```
+
+### Linting
+
+```bash
+# Check for issues
+ruff check .
+
+# Auto-fix issues
+ruff check --fix .
+
+# Format code
+ruff format .
 ```
 
 ## How It Works
@@ -100,6 +153,7 @@ See [IMPROVEMENTS.md](IMPROVEMENTS.md) for roadmap:
 - Agent memory across analyses
 - Performance tracking & backtesting
 - Async execution
+- Web interface
 
 ## Disclaimer
 

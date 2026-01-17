@@ -15,9 +15,14 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.text import Text
-
-from agents import AgentResponse, BearAgent, BullAgent, PortfolioManagerAgent
-from tools import format_metrics_for_agent, get_financial_metrics
+from src.investment_committee import (
+    AgentResponse,
+    BearAgent,
+    BullAgent,
+    PortfolioManagerAgent,
+    format_metrics_for_agent,
+    get_financial_metrics,
+)
 
 console = Console()
 

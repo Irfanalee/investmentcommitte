@@ -1,0 +1,34 @@
+"""
+The Investment Committee - Multi-Agent Stock Analysis System
+"""
+
+from .agents import (
+    Agent,
+    AgentResponse,
+    AgentRole,
+    BearAgent,
+    BullAgent,
+    Decision,
+    PortfolioDecision,
+    PortfolioManagerAgent,
+)
+from .config import AppConfig, LLMConfig
+from .tools import FinancialMetrics, format_metrics_for_agent, get_financial_metrics
+
+__version__ = "1.0.0"
+
+__all__ = [
+    "Agent",
+    "AgentRole",
+    "AgentResponse",
+    "BullAgent",
+    "BearAgent",
+    "PortfolioManagerAgent",
+    "Decision",
+    "PortfolioDecision",
+    "FinancialMetrics",
+    "get_financial_metrics",
+    "format_metrics_for_agent",
+    "LLMConfig",
+    "AppConfig",
+]
