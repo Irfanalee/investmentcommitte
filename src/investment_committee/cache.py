@@ -4,9 +4,9 @@ File-based caching for financial data with TTL support.
 This module provides a simple file-based cache to reduce redundant API calls
 to yfinance and improve response times for repeated ticker queries.
 """
+
 import hashlib
 import json
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 class CacheConfig(BaseModel):
     """Cache configuration settings"""
+
     enabled: bool = True
     cache_dir: str = ".cache/investment_committee"
     default_ttl_hours: int = 24  # Default: cache for 24 hours
@@ -24,6 +25,7 @@ class CacheConfig(BaseModel):
 
 class CacheEntry(BaseModel):
     """A single cache entry with metadata"""
+
     key: str
     data: dict[str, Any]
     created_at: datetime
@@ -84,14 +86,14 @@ class FileCache:
             return None
 
         try:
-            with open(cache_file, "r") as f:
+            with open(cache_file) as f:
                 entry_data = json.load(f)
 
             entry = CacheEntry(
                 key=entry_data["key"],
                 data=entry_data["data"],
                 created_at=datetime.fromisoformat(entry_data["created_at"]),
-                expires_at=datetime.fromisoformat(entry_data["expires_at"])
+                expires_at=datetime.fromisoformat(entry_data["expires_at"]),
             )
 
             if entry.is_expired():
@@ -122,22 +124,24 @@ class FileCache:
         now = datetime.now()
 
         entry = CacheEntry(
-            key=key.upper(),
-            data=data,
-            created_at=now,
-            expires_at=now + timedelta(hours=ttl)
+            key=key.upper(), data=data, created_at=now, expires_at=now + timedelta(hours=ttl)
         )
 
         cache_file = self._get_cache_file(key)
 
         try:
             with open(cache_file, "w") as f:
-                json.dump({
-                    "key": entry.key,
-                    "data": entry.data,
-                    "created_at": entry.created_at.isoformat(),
-                    "expires_at": entry.expires_at.isoformat()
-                }, f, indent=2, default=str)
+                json.dump(
+                    {
+                        "key": entry.key,
+                        "data": entry.data,
+                        "created_at": entry.created_at.isoformat(),
+                        "expires_at": entry.expires_at.isoformat(),
+                    },
+                    f,
+                    indent=2,
+                    default=str,
+                )
         except (OSError, TypeError) as e:
             # Log error but don't fail the operation
             print(f"Warning: Failed to cache data for {key}: {e}")
@@ -188,7 +192,7 @@ class FileCache:
         count = 0
         for cache_file in self._cache_path.glob("*.json"):
             try:
-                with open(cache_file, "r") as f:
+                with open(cache_file) as f:
                     entry_data = json.load(f)
 
                 expires_at = datetime.fromisoformat(entry_data["expires_at"])
@@ -221,7 +225,7 @@ class FileCache:
             size_bytes += cache_file.stat().st_size
 
             try:
-                with open(cache_file, "r") as f:
+                with open(cache_file) as f:
                     entry_data = json.load(f)
                 expires_at = datetime.fromisoformat(entry_data["expires_at"])
                 if datetime.now() > expires_at:
@@ -234,7 +238,7 @@ class FileCache:
             "size_bytes": size_bytes,
             "size_readable": f"{size_bytes / 1024:.1f} KB",
             "expired": expired,
-            "valid": entries - expired
+            "valid": entries - expired,
         }
 
 

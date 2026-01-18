@@ -1,6 +1,7 @@
 """
 Agent Layer: Bull, Bear, and Portfolio Manager AI Agents
 """
+
 import os
 from enum import Enum
 
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 
 class AgentRole(str, Enum):
     """Agent role definitions"""
+
     BULL = "bull"
     BEAR = "bear"
     PORTFOLIO_MANAGER = "portfolio_manager"
@@ -16,6 +18,7 @@ class AgentRole(str, Enum):
 
 class AgentResponse(BaseModel):
     """Structured response from an agent"""
+
     role: AgentRole
     content: str
     raw_response: str
@@ -23,6 +26,7 @@ class AgentResponse(BaseModel):
 
 class Decision(str, Enum):
     """Portfolio Manager decision options"""
+
     BUY = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
@@ -30,6 +34,7 @@ class Decision(str, Enum):
 
 class PortfolioDecision(BaseModel):
     """Final decision from Portfolio Manager"""
+
     decision: Decision
     justification: str
     confidence: str | None = None
@@ -63,7 +68,6 @@ You MUST output your analysis in this EXACT structure:
 </bull_thesis>
 
 Be persuasive and confident in your bullish stance.""",
-
         AgentRole.BEAR: """You are a risk-averse, skeptical investor known as "The Bear".
 
 Your mandate:
@@ -88,7 +92,6 @@ You MUST output your analysis in this EXACT structure:
 </bear_thesis>
 
 Be critical and rigorous in your bearish stance.""",
-
         AgentRole.PORTFOLIO_MANAGER: """You are an experienced Portfolio Manager and the final decision maker.
 
 Your mandate:
@@ -106,7 +109,7 @@ Your reasoning here (2-3 paragraphs explaining why you chose this decision,
 which arguments were most compelling, and what factors tipped the scale)
 </justification>
 
-Be balanced but decisive. Don't hedge excessively."""
+Be balanced but decisive. Don't hedge excessively.""",
     }
 
     def __init__(self, role: AgentRole, llm_provider: str = "anthropic"):
@@ -128,9 +131,11 @@ Be balanced but decisive. Don't hedge excessively."""
         if self._client is None:
             if self.llm_provider == "openai":
                 from openai import OpenAI
+
                 self._client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             elif self.llm_provider == "anthropic":
                 from anthropic import Anthropic
+
                 self._client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
             else:
                 raise ValueError(f"Unknown LLM provider: {self.llm_provider}")
@@ -144,10 +149,7 @@ Be balanced but decisive. Don't hedge excessively."""
         full_messages = [{"role": "system", "content": self.system_prompt}] + messages
 
         response = client.chat.completions.create(
-            model=model,
-            messages=full_messages,
-            temperature=0.7,
-            max_tokens=2000
+            model=model, messages=full_messages, temperature=0.7, max_tokens=2000
         )
         return response.choices[0].message.content
 
@@ -161,7 +163,7 @@ Be balanced but decisive. Don't hedge excessively."""
             max_tokens=2000,
             temperature=0.7,
             system=self.system_prompt,
-            messages=messages
+            messages=messages,
         )
         return response.content[0].text
 
@@ -196,11 +198,7 @@ Be balanced but decisive. Don't hedge excessively."""
         # Add assistant response to history
         self._conversation_history.append({"role": "assistant", "content": raw_response})
 
-        return AgentResponse(
-            role=self.role,
-            content=raw_response,
-            raw_response=raw_response
-        )
+        return AgentResponse(role=self.role, content=raw_response, raw_response=raw_response)
 
 
 def extract_key_points(response_content: str) -> str:
@@ -214,6 +212,7 @@ def extract_key_points(response_content: str) -> str:
         Extracted key points or abbreviated content if tags not found
     """
     import re
+
     pattern = r"<key_points>(.*?)</key_points>"
     match = re.search(pattern, response_content, re.DOTALL)
     if match:
@@ -229,10 +228,7 @@ class BullAgent(Agent):
         super().__init__(AgentRole.BULL, llm_provider)
 
     def analyze(
-        self,
-        financial_data: str,
-        bear_thesis: str | None = None,
-        use_key_points_only: bool = True
+        self, financial_data: str, bear_thesis: str | None = None, use_key_points_only: bool = True
     ) -> AgentResponse:
         """
         Analyze stock data from a bullish perspective (legacy single-call method).
@@ -247,7 +243,7 @@ class BullAgent(Agent):
         """
         if bear_thesis:
             bear_points = extract_key_points(bear_thesis) if use_key_points_only else bear_thesis
-            prompt = f"""Stock: {financial_data.split('|')[0].strip()}
+            prompt = f"""Stock: {financial_data.split("|")[0].strip()}
 
 BEAR'S KEY ARGUMENTS TO COUNTER:
 {bear_points}
@@ -305,10 +301,7 @@ class BearAgent(Agent):
         super().__init__(AgentRole.BEAR, llm_provider)
 
     def analyze(
-        self,
-        financial_data: str,
-        bull_thesis: str | None = None,
-        use_key_points_only: bool = True
+        self, financial_data: str, bull_thesis: str | None = None, use_key_points_only: bool = True
     ) -> AgentResponse:
         """
         Analyze stock data from a bearish perspective (legacy single-call method).
@@ -323,7 +316,7 @@ class BearAgent(Agent):
         """
         if bull_thesis:
             bull_points = extract_key_points(bull_thesis) if use_key_points_only else bull_thesis
-            prompt = f"""Stock: {financial_data.split('|')[0].strip()}
+            prompt = f"""Stock: {financial_data.split("|")[0].strip()}
 
 BULL'S KEY ARGUMENTS TO COUNTER:
 {bull_points}
@@ -385,7 +378,7 @@ class PortfolioManagerAgent(Agent):
         financial_data: str,
         bull_thesis: str,
         bear_thesis: str,
-        use_key_points_only: bool = True
+        use_key_points_only: bool = True,
     ) -> AgentResponse:
         """
         Make final investment decision based on both theses.
@@ -448,7 +441,4 @@ Provide clear justification for your choice."""
         except KeyError:
             decision = Decision.HOLD
 
-        return PortfolioDecision(
-            decision=decision,
-            justification=justification
-        )
+        return PortfolioDecision(decision=decision, justification=justification)

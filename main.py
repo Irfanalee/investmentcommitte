@@ -2,6 +2,7 @@
 The Investment Committee - Main Orchestrator
 Multi-Agent System for Stock Analysis
 """
+
 import os
 import re
 import sys
@@ -49,11 +50,7 @@ def load_environment():
             console.print("[red]ERROR: ANTHROPIC_API_KEY not found in .env file[/red]")
             sys.exit(1)
 
-    return {
-        "bull": bull_provider,
-        "bear": bear_provider,
-        "pm": pm_provider
-    }
+    return {"bull": bull_provider, "bear": bear_provider, "pm": pm_provider}
 
 
 def display_header():
@@ -69,7 +66,9 @@ def display_header():
 
 def display_financial_data(metrics):
     """Display financial metrics in a clean table"""
-    table = Table(title=f"Financial Data: {metrics.ticker}", box=box.ROUNDED, title_style="bold magenta")
+    table = Table(
+        title=f"Financial Data: {metrics.ticker}", box=box.ROUNDED, title_style="bold magenta"
+    )
 
     table.add_column("Metric", style="cyan", no_wrap=True)
     table.add_column("Value", style="green")
@@ -79,7 +78,9 @@ def display_financial_data(metrics):
         console.print(table)
         return
 
-    table.add_row("Current Price", f"${metrics.current_price:.2f}" if metrics.current_price else "N/A")
+    table.add_row(
+        "Current Price", f"${metrics.current_price:.2f}" if metrics.current_price else "N/A"
+    )
     table.add_row("P/E Ratio", f"{metrics.pe_ratio:.2f}" if metrics.pe_ratio else "N/A")
     table.add_row("52-Week High", f"${metrics.week_52_high:.2f}" if metrics.week_52_high else "N/A")
     table.add_row("52-Week Low", f"${metrics.week_52_low:.2f}" if metrics.week_52_low else "N/A")
@@ -93,7 +94,7 @@ def display_financial_data(metrics):
             "\n".join([f"• {headline}" for headline in metrics.news_headlines]),
             title="Recent News",
             border_style="blue",
-            box=box.ROUNDED
+            box=box.ROUNDED,
         )
         console.print(news_panel)
 
@@ -109,9 +110,7 @@ def extract_thesis(response: AgentResponse, tag: str) -> str:
 
 
 def run_parallel_analysis(
-    financial_data: str,
-    bull_agent: BullAgent,
-    bear_agent: BearAgent
+    financial_data: str, bull_agent: BullAgent, bear_agent: BearAgent
 ) -> tuple[AgentResponse, AgentResponse]:
     """
     Run Bull and Bear initial analysis (starts multi-turn conversations).
@@ -125,9 +124,7 @@ def run_parallel_analysis(
         Tuple of (bull_response, bear_response)
     """
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
     ) as progress:
         task1 = progress.add_task("[green]Bull Agent analyzing...", total=None)
         task2 = progress.add_task("[red]Bear Agent analyzing...", total=None)
@@ -146,7 +143,7 @@ def run_rebuttal_phase(
     bull_agent: BullAgent,
     bear_agent: BearAgent,
     initial_bull: AgentResponse,
-    initial_bear: AgentResponse
+    initial_bear: AgentResponse,
 ) -> tuple[AgentResponse, AgentResponse]:
     """
     Run rebuttal phase - continues existing conversations (no financial data resent).
@@ -163,12 +160,12 @@ def run_rebuttal_phase(
     Returns:
         Tuple of (bull_rebuttal, bear_rebuttal)
     """
-    console.print("\n[bold yellow]🔄 REBUTTAL PHASE: Agents counter each other's arguments[/bold yellow]\n")
+    console.print(
+        "\n[bold yellow]🔄 REBUTTAL PHASE: Agents counter each other's arguments[/bold yellow]\n"
+    )
 
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
     ) as progress:
         task1 = progress.add_task("[green]Bull countering Bear's thesis...", total=None)
         task2 = progress.add_task("[red]Bear countering Bull's thesis...", total=None)
@@ -195,15 +192,11 @@ def display_debate(bull_response: AgentResponse, bear_response: AgentResponse):
         title="🐂 THE BULL THESIS",
         border_style="green",
         box=box.DOUBLE,
-        padding=(1, 2)
+        padding=(1, 2),
     )
 
     bear_panel = Panel(
-        bear_thesis,
-        title="🐻 THE BEAR THESIS",
-        border_style="red",
-        box=box.DOUBLE,
-        padding=(1, 2)
+        bear_thesis, title="🐻 THE BEAR THESIS", border_style="red", box=box.DOUBLE, padding=(1, 2)
     )
 
     columns = Columns([bull_panel, bear_panel], equal=True, expand=True)
@@ -225,7 +218,9 @@ def display_final_decision(decision):
         decision_style = "bold yellow on black"
         emoji = "⏸️"
 
-    decision_text = Text(f"\n  {emoji}  {decision.decision.value}  {emoji}  \n", style=decision_style)
+    decision_text = Text(
+        f"\n  {emoji}  {decision.decision.value}  {emoji}  \n", style=decision_style
+    )
     console.print(Panel(decision_text, border_style="magenta", box=box.DOUBLE))
 
     justification_panel = Panel(
@@ -233,7 +228,7 @@ def display_final_decision(decision):
         title="Justification",
         border_style="cyan",
         box=box.ROUNDED,
-        padding=(1, 2)
+        padding=(1, 2),
     )
     console.print(justification_panel)
 
@@ -259,19 +254,23 @@ def run_investment_committee(ticker: str, providers: dict):
         metrics = get_financial_metrics(ticker)
 
     if metrics.from_cache:
-        console.print(f"[dim]Using cached data (fetched: {metrics.fetch_timestamp.strftime('%Y-%m-%d %H:%M')})[/dim]")
+        console.print(
+            f"[dim]Using cached data (fetched: {metrics.fetch_timestamp.strftime('%Y-%m-%d %H:%M')})[/dim]"
+        )
 
     if metrics.error:
-        console.print(Panel(
-            f"[red]✗ {metrics.error}[/red]\n\n"
-            "[yellow]Suggestions:[/yellow]\n"
-            "• Verify the ticker symbol is correct\n"
-            "• For international stocks, include exchange suffix (e.g., SAAB-B.ST)\n"
-            "• Try searching on Yahoo Finance: https://finance.yahoo.com",
-            title="⚠️  Stock Not Found",
-            border_style="red",
-            box=box.ROUNDED
-        ))
+        console.print(
+            Panel(
+                f"[red]✗ {metrics.error}[/red]\n\n"
+                "[yellow]Suggestions:[/yellow]\n"
+                "• Verify the ticker symbol is correct\n"
+                "• For international stocks, include exchange suffix (e.g., SAAB-B.ST)\n"
+                "• Try searching on Yahoo Finance: https://finance.yahoo.com",
+                title="⚠️  Stock Not Found",
+                border_style="red",
+                box=box.ROUNDED,
+            )
+        )
         return
 
     display_financial_data(metrics)
@@ -283,9 +282,9 @@ def run_investment_committee(ticker: str, providers: dict):
     console.print(f"[dim]  🐻 Bear: {providers['bear'].upper()}[/dim]")
     console.print(f"[dim]  ⚖️  PM: {providers['pm'].upper()}[/dim]\n")
 
-    bull_agent = BullAgent(llm_provider=providers['bull'])
-    bear_agent = BearAgent(llm_provider=providers['bear'])
-    pm_agent = PortfolioManagerAgent(llm_provider=providers['pm'])
+    bull_agent = BullAgent(llm_provider=providers["bull"])
+    bear_agent = BearAgent(llm_provider=providers["bear"])
+    pm_agent = PortfolioManagerAgent(llm_provider=providers["pm"])
 
     # STEP 3: Initial analysis (starts multi-turn conversations)
     console.print("\n[bold yellow]📡 Phase 1: Initial Analysis[/bold yellow]\n")
@@ -303,9 +302,7 @@ def run_investment_committee(ticker: str, providers: dict):
     console.print("\n[bold yellow]⚖️  Portfolio Manager deliberating...[/bold yellow]\n")
     with console.status("[bold magenta]Making final decision..."):
         pm_response = pm_agent.make_decision(
-            financial_data,
-            bull_rebuttal.content,
-            bear_rebuttal.content
+            financial_data, bull_rebuttal.content, bear_rebuttal.content
         )
 
     decision = PortfolioManagerAgent.parse_decision(pm_response)
@@ -321,10 +318,14 @@ def main():
     console.print("[dim]Multi-LLM Configuration Loaded[/dim]\n")
 
     while True:
-        ticker = Prompt.ask("\n[bold cyan]Enter stock ticker (or 'quit' to exit)[/bold cyan]").strip()
+        ticker = Prompt.ask(
+            "\n[bold cyan]Enter stock ticker (or 'quit' to exit)[/bold cyan]"
+        ).strip()
 
-        if ticker.lower() in ['quit', 'exit', 'q']:
-            console.print("\n[bold green]Thank you for using The Investment Committee![/bold green]")
+        if ticker.lower() in ["quit", "exit", "q"]:
+            console.print(
+                "\n[bold green]Thank you for using The Investment Committee![/bold green]"
+            )
             break
 
         if not ticker:
@@ -338,6 +339,7 @@ def main():
         except Exception as e:
             console.print(f"\n[red]Error during analysis: {str(e)}[/red]")
             import traceback
+
             console.print(f"[dim]{traceback.format_exc()}[/dim]")
 
         console.print("\n" + "─" * 60)

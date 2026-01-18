@@ -1,6 +1,7 @@
 """
 Data Layer: Financial data fetching using yfinance with caching support.
 """
+
 import os
 import sys
 from contextlib import contextmanager
@@ -9,14 +10,14 @@ from datetime import datetime
 import yfinance as yf
 from pydantic import BaseModel, Field
 
-from .cache import CacheConfig, get_cache
+from .cache import get_cache
 
 
 @contextmanager
 def suppress_stderr():
     """Temporarily suppress stderr output from yfinance"""
     stderr = sys.stderr
-    sys.stderr = open(os.devnull, 'w')
+    sys.stderr = open(os.devnull, "w")
     try:
         yield
     finally:
@@ -26,6 +27,7 @@ def suppress_stderr():
 
 class FinancialMetrics(BaseModel):
     """Structured financial data for a stock ticker"""
+
     ticker: str
     current_price: float | None = None
     pe_ratio: float | None = None
@@ -41,9 +43,7 @@ class FinancialMetrics(BaseModel):
 
 
 def get_financial_metrics(
-    ticker: str,
-    use_cache: bool = True,
-    cache_ttl_hours: int | None = None
+    ticker: str, use_cache: bool = True, cache_ttl_hours: int | None = None
 ) -> FinancialMetrics:
     """
     Fetch comprehensive financial metrics for a given stock ticker.
@@ -80,7 +80,7 @@ def get_financial_metrics(
     try:
         # Auto-correct common international ticker formats
         # Swedish stocks (e.g., SAAB-B -> SAAB-B.ST)
-        if '-' in ticker and '.' not in ticker:
+        if "-" in ticker and "." not in ticker:
             ticker_variants = [ticker, f"{ticker}.ST"]
         else:
             ticker_variants = [ticker]
@@ -95,7 +95,7 @@ def get_financial_metrics(
                     test_stock = yf.Ticker(variant)
                     test_info = test_stock.info
                     # Check if we got valid data
-                    if test_info.get('currentPrice') or test_info.get('regularMarketPrice'):
+                    if test_info.get("currentPrice") or test_info.get("regularMarketPrice"):
                         stock = test_stock
                         working_ticker = variant
                         break
@@ -109,36 +109,36 @@ def get_financial_metrics(
             info = stock.info
 
         # Validate that we got actual stock data
-        if not info or (not info.get('currentPrice') and not info.get('regularMarketPrice')):
+        if not info or (not info.get("currentPrice") and not info.get("regularMarketPrice")):
             return FinancialMetrics(
                 ticker=working_ticker.upper(),
-                error=f"Ticker '{working_ticker}' not found. Please verify the symbol is correct."
+                error=f"Ticker '{working_ticker}' not found. Please verify the symbol is correct.",
             )
 
         # Fetch recent news (last 5 headlines)
-        news = stock.news[:5] if hasattr(stock, 'news') and stock.news else []
+        news = stock.news[:5] if hasattr(stock, "news") and stock.news else []
         headlines = []
         for article in news:
             # Try different paths for title (yfinance API structure varies)
             title = (
-                article.get('title') or
-                article.get('content', {}).get('title') or
-                'No title available'
+                article.get("title")
+                or article.get("content", {}).get("title")
+                or "No title available"
             )
             headlines.append(title)
 
         # Extract key metrics with safe fallbacks
         metrics = FinancialMetrics(
             ticker=working_ticker.upper(),
-            current_price=info.get('currentPrice') or info.get('regularMarketPrice'),
-            pe_ratio=info.get('trailingPE') or info.get('forwardPE'),
-            week_52_high=info.get('fiftyTwoWeekHigh'),
-            week_52_low=info.get('fiftyTwoWeekLow'),
-            market_cap=info.get('marketCap'),
-            volume=info.get('volume'),
-            avg_volume=info.get('averageVolume'),
+            current_price=info.get("currentPrice") or info.get("regularMarketPrice"),
+            pe_ratio=info.get("trailingPE") or info.get("forwardPE"),
+            week_52_high=info.get("fiftyTwoWeekHigh"),
+            week_52_low=info.get("fiftyTwoWeekLow"),
+            market_cap=info.get("marketCap"),
+            volume=info.get("volume"),
+            avg_volume=info.get("averageVolume"),
             news_headlines=headlines if headlines else ["No recent news available"],
-            from_cache=False
+            from_cache=False,
         )
 
         # Store in cache (only successful fetches, not errors)
@@ -156,12 +156,11 @@ def get_financial_metrics(
         if "404" in error_msg or "Not Found" in error_msg:
             return FinancialMetrics(
                 ticker=ticker.upper(),
-                error=f"Ticker '{ticker}' not found. Please check the symbol and try again."
+                error=f"Ticker '{ticker}' not found. Please check the symbol and try again.",
             )
         else:
             return FinancialMetrics(
-                ticker=ticker.upper(),
-                error=f"Failed to fetch data: {error_msg}"
+                ticker=ticker.upper(), error=f"Failed to fetch data: {error_msg}"
             )
 
 
@@ -230,7 +229,7 @@ News: """
     # Original verbose format (kept for backwards compatibility)
     output = f"""
 FINANCIAL DATA FOR {metrics.ticker}
-{'=' * 50}
+{"=" * 50}
 
 PRICE METRICS:
 - Current Price: ${metrics.current_price:.2f} if metrics.current_price else 'N/A'
@@ -238,12 +237,12 @@ PRICE METRICS:
 - 52-Week Low: ${metrics.week_52_low:.2f} if metrics.week_52_low else 'N/A'
 
 VALUATION:
-- P/E Ratio: {f"{metrics.pe_ratio:.2f}" if metrics.pe_ratio else 'N/A'}
+- P/E Ratio: {f"{metrics.pe_ratio:.2f}" if metrics.pe_ratio else "N/A"}
 - Market Cap: ${metrics.market_cap:,.0f} if metrics.market_cap else 'N/A'
 
 VOLUME:
-- Current Volume: {f"{metrics.volume:,}" if metrics.volume else 'N/A'}
-- Average Volume: {f"{metrics.avg_volume:,}" if metrics.avg_volume else 'N/A'}
+- Current Volume: {f"{metrics.volume:,}" if metrics.volume else "N/A"}
+- Average Volume: {f"{metrics.avg_volume:,}" if metrics.avg_volume else "N/A"}
 
 RECENT NEWS HEADLINES:
 """

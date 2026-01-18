@@ -1,6 +1,7 @@
 """
 Configuration management for The Investment Committee
 """
+
 import os
 from typing import Literal, cast
 
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 
 class LLMConfig(BaseModel):
     """LLM provider configuration"""
+
     provider: Literal["openai", "anthropic"] = Field(default="anthropic")
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
@@ -30,7 +32,7 @@ class LLMConfig(BaseModel):
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
             openai_model=os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview"),
-            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022"),
         )
 
     def validate_api_key(self) -> bool:
@@ -50,6 +52,7 @@ class LLMConfig(BaseModel):
 
 class CacheSettings(BaseModel):
     """Cache configuration settings"""
+
     enabled: bool = Field(default=True)
     cache_dir: str = Field(default=".cache/investment_committee")
     ttl_hours: int = Field(default=24)  # Default: 24 hour cache
@@ -60,12 +63,13 @@ class CacheSettings(BaseModel):
         return cls(
             enabled=os.getenv("CACHE_ENABLED", "true").lower() == "true",
             cache_dir=os.getenv("CACHE_DIR", ".cache/investment_committee"),
-            ttl_hours=int(os.getenv("CACHE_TTL_HOURS", "24"))
+            ttl_hours=int(os.getenv("CACHE_TTL_HOURS", "24")),
         )
 
 
 class AppConfig(BaseModel):
     """Application configuration"""
+
     llm: LLMConfig
     cache: CacheSettings = Field(default_factory=CacheSettings)
     enable_rebuttal: bool = Field(default=True)
@@ -80,5 +84,5 @@ class AppConfig(BaseModel):
             cache=CacheSettings.from_env(),
             enable_rebuttal=os.getenv("ENABLE_REBUTTAL", "true").lower() == "true",
             max_retries=int(os.getenv("MAX_RETRIES", "3")),
-            timeout=int(os.getenv("TIMEOUT", "60"))
+            timeout=int(os.getenv("TIMEOUT", "60")),
         )
