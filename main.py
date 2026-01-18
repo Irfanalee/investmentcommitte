@@ -114,7 +114,7 @@ def run_parallel_analysis(
     bear_agent: BearAgent
 ) -> tuple[AgentResponse, AgentResponse]:
     """
-    Run Bull and Bear analysis in parallel (simulated).
+    Run Bull and Bear initial analysis (starts multi-turn conversations).
 
     Args:
         financial_data: Formatted financial metrics
@@ -132,31 +132,31 @@ def run_parallel_analysis(
         task1 = progress.add_task("[green]Bull Agent analyzing...", total=None)
         task2 = progress.add_task("[red]Bear Agent analyzing...", total=None)
 
-        # In a real parallel system, these would run concurrently
-        # For simplicity, we run them sequentially here
-        bull_response = bull_agent.analyze(financial_data)
+        # Use new multi-turn methods - starts fresh conversations
+        bull_response = bull_agent.analyze_initial(financial_data)
         progress.update(task1, completed=True)
 
-        bear_response = bear_agent.analyze(financial_data)
+        bear_response = bear_agent.analyze_initial(financial_data)
         progress.update(task2, completed=True)
 
     return bull_response, bear_response
 
 
 def run_rebuttal_phase(
-    financial_data: str,
     bull_agent: BullAgent,
     bear_agent: BearAgent,
     initial_bull: AgentResponse,
     initial_bear: AgentResponse
 ) -> tuple[AgentResponse, AgentResponse]:
     """
-    Run rebuttal phase where agents counter each other's arguments.
+    Run rebuttal phase - continues existing conversations (no financial data resent).
+
+    This uses multi-turn conversations, so financial data from initial analysis
+    is already in context. Only the opponent's key points are sent.
 
     Args:
-        financial_data: Formatted financial metrics
-        bull_agent: The Bull agent
-        bear_agent: The Bear agent
+        bull_agent: The Bull agent (with conversation history)
+        bear_agent: The Bear agent (with conversation history)
         initial_bull: Initial bull thesis
         initial_bear: Initial bear thesis
 
@@ -173,10 +173,11 @@ def run_rebuttal_phase(
         task1 = progress.add_task("[green]Bull countering Bear's thesis...", total=None)
         task2 = progress.add_task("[red]Bear countering Bull's thesis...", total=None)
 
-        bull_rebuttal = bull_agent.analyze(financial_data, bear_thesis=initial_bear.content)
+        # Continue existing conversations - no need to resend financial_data
+        bull_rebuttal = bull_agent.analyze_rebuttal(bear_thesis=initial_bear.content)
         progress.update(task1, completed=True)
 
-        bear_rebuttal = bear_agent.analyze(financial_data, bull_thesis=initial_bull.content)
+        bear_rebuttal = bear_agent.analyze_rebuttal(bull_thesis=initial_bull.content)
         progress.update(task2, completed=True)
 
     return bull_rebuttal, bear_rebuttal
@@ -283,13 +284,13 @@ def run_investment_committee(ticker: str, providers: dict):
     bear_agent = BearAgent(llm_provider=providers['bear'])
     pm_agent = PortfolioManagerAgent(llm_provider=providers['pm'])
 
-    # STEP 3: Parallel analysis (initial theses)
-    console.print("\n[bold yellow]📡 Phase 1: Initial Analysis (Parallel)[/bold yellow]\n")
+    # STEP 3: Initial analysis (starts multi-turn conversations)
+    console.print("\n[bold yellow]📡 Phase 1: Initial Analysis[/bold yellow]\n")
     bull_response, bear_response = run_parallel_analysis(financial_data, bull_agent, bear_agent)
 
-    # STEP 4: Rebuttal phase
+    # STEP 4: Rebuttal phase (continues conversations - no financial_data resent)
     bull_rebuttal, bear_rebuttal = run_rebuttal_phase(
-        financial_data, bull_agent, bear_agent, bull_response, bear_response
+        bull_agent, bear_agent, bull_response, bear_response
     )
 
     # Display the debate (using rebuttals)

@@ -121,6 +121,7 @@ Be balanced but decisive. Don't hedge excessively."""
         self.system_prompt = self.SYSTEM_PROMPTS[role]
         self.llm_provider = llm_provider
         self._client = None
+        self._conversation_history: list[dict] = []  # For multi-turn conversations
 
     def _get_client(self):
         """Lazy load the LLM client"""
@@ -135,26 +136,24 @@ Be balanced but decisive. Don't hedge excessively."""
                 raise ValueError(f"Unknown LLM provider: {self.llm_provider}")
         return self._client
 
-    def _call_openai(self, user_message: str) -> str:
-        """Call OpenAI API"""
+    def _call_openai(self, messages: list[dict]) -> str:
+        """Call OpenAI API with conversation history"""
         client = self._get_client()
         model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
 
+        full_messages = [{"role": "system", "content": self.system_prompt}] + messages
+
         response = client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": user_message}
-            ],
+            messages=full_messages,
             temperature=0.7,
             max_tokens=2000
         )
         return response.choices[0].message.content
 
-    def _call_anthropic(self, user_message: str) -> str:
-        """Call Anthropic API"""
+    def _call_anthropic(self, messages: list[dict]) -> str:
+        """Call Anthropic API with conversation history"""
         client = self._get_client()
-        # Use env variable or default to working model
         model = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
 
         response = client.messages.create(
@@ -162,26 +161,40 @@ Be balanced but decisive. Don't hedge excessively."""
             max_tokens=2000,
             temperature=0.7,
             system=self.system_prompt,
-            messages=[
-                {"role": "user", "content": user_message}
-            ]
+            messages=messages
         )
         return response.content[0].text
 
-    def invoke(self, user_message: str) -> AgentResponse:
+    def reset_conversation(self):
+        """Clear conversation history for a fresh session"""
+        self._conversation_history = []
+
+    def invoke(self, user_message: str, continue_conversation: bool = False) -> AgentResponse:
         """
         Invoke the agent with a message.
 
         Args:
             user_message: The prompt/data to send to the agent
+            continue_conversation: If True, append to existing conversation history
+                                   If False, start fresh (default for backwards compatibility)
 
         Returns:
             AgentResponse with structured output
         """
+        if not continue_conversation:
+            self._conversation_history = []
+
+        # Add user message to history
+        self._conversation_history.append({"role": "user", "content": user_message})
+
+        # Make API call with full conversation history
         if self.llm_provider == "openai":
-            raw_response = self._call_openai(user_message)
+            raw_response = self._call_openai(self._conversation_history)
         else:
-            raw_response = self._call_anthropic(user_message)
+            raw_response = self._call_anthropic(self._conversation_history)
+
+        # Add assistant response to history
+        self._conversation_history.append({"role": "assistant", "content": raw_response})
 
         return AgentResponse(
             role=self.role,
@@ -222,7 +235,7 @@ class BullAgent(Agent):
         use_key_points_only: bool = True
     ) -> AgentResponse:
         """
-        Analyze stock data from a bullish perspective.
+        Analyze stock data from a bullish perspective (legacy single-call method).
 
         Args:
             financial_data: Formatted financial metrics
@@ -233,9 +246,7 @@ class BullAgent(Agent):
             AgentResponse with bull thesis
         """
         if bear_thesis:
-            # For rebuttals, use key points only to save tokens
             bear_points = extract_key_points(bear_thesis) if use_key_points_only else bear_thesis
-
             prompt = f"""Stock: {financial_data.split('|')[0].strip()}
 
 BEAR'S KEY ARGUMENTS TO COUNTER:
@@ -248,6 +259,43 @@ Provide your REBUTTAL addressing these concerns. Reinforce your bullish thesis."
 Analyze this stock and provide your bullish investment thesis."""
 
         return self.invoke(prompt)
+
+    def analyze_initial(self, financial_data: str) -> AgentResponse:
+        """
+        Initial analysis - starts a new conversation.
+
+        Args:
+            financial_data: Formatted financial metrics
+
+        Returns:
+            AgentResponse with initial bull thesis
+        """
+        self.reset_conversation()
+        prompt = f"""{financial_data}
+
+Analyze this stock and provide your bullish investment thesis."""
+        return self.invoke(prompt, continue_conversation=False)
+
+    def analyze_rebuttal(self, bear_thesis: str, use_key_points_only: bool = True) -> AgentResponse:
+        """
+        Rebuttal analysis - continues the existing conversation (no need to resend financial data).
+
+        Args:
+            bear_thesis: The bear's thesis to counter
+            use_key_points_only: If True, extract only key points (saves tokens)
+
+        Returns:
+            AgentResponse with bull rebuttal
+        """
+        bear_points = extract_key_points(bear_thesis) if use_key_points_only else bear_thesis
+
+        prompt = f"""The Bear has responded with these concerns:
+
+{bear_points}
+
+Provide your REBUTTAL addressing these concerns. Reinforce your bullish thesis."""
+
+        return self.invoke(prompt, continue_conversation=True)
 
 
 class BearAgent(Agent):
@@ -263,7 +311,7 @@ class BearAgent(Agent):
         use_key_points_only: bool = True
     ) -> AgentResponse:
         """
-        Analyze stock data from a bearish perspective.
+        Analyze stock data from a bearish perspective (legacy single-call method).
 
         Args:
             financial_data: Formatted financial metrics
@@ -274,9 +322,7 @@ class BearAgent(Agent):
             AgentResponse with bear thesis
         """
         if bull_thesis:
-            # For rebuttals, use key points only to save tokens
             bull_points = extract_key_points(bull_thesis) if use_key_points_only else bull_thesis
-
             prompt = f"""Stock: {financial_data.split('|')[0].strip()}
 
 BULL'S KEY ARGUMENTS TO COUNTER:
@@ -289,6 +335,43 @@ Provide your REBUTTAL addressing this overoptimism. Reinforce your bearish thesi
 Analyze this stock and provide your bearish investment thesis."""
 
         return self.invoke(prompt)
+
+    def analyze_initial(self, financial_data: str) -> AgentResponse:
+        """
+        Initial analysis - starts a new conversation.
+
+        Args:
+            financial_data: Formatted financial metrics
+
+        Returns:
+            AgentResponse with initial bear thesis
+        """
+        self.reset_conversation()
+        prompt = f"""{financial_data}
+
+Analyze this stock and provide your bearish investment thesis."""
+        return self.invoke(prompt, continue_conversation=False)
+
+    def analyze_rebuttal(self, bull_thesis: str, use_key_points_only: bool = True) -> AgentResponse:
+        """
+        Rebuttal analysis - continues the existing conversation (no need to resend financial data).
+
+        Args:
+            bull_thesis: The bull's thesis to counter
+            use_key_points_only: If True, extract only key points (saves tokens)
+
+        Returns:
+            AgentResponse with bear rebuttal
+        """
+        bull_points = extract_key_points(bull_thesis) if use_key_points_only else bull_thesis
+
+        prompt = f"""The Bull has responded with these arguments:
+
+{bull_points}
+
+Provide your REBUTTAL addressing this overoptimism. Reinforce your bearish thesis."""
+
+        return self.invoke(prompt, continue_conversation=True)
 
 
 class PortfolioManagerAgent(Agent):
