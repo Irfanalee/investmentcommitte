@@ -81,3 +81,5 @@ Thumbs.db
 #tests
 test_*
 TESTING_COMPLETE.MD
+
+.cache
