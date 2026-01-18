@@ -48,11 +48,19 @@ Your mandate:
 - Be optimistic about future earnings potential
 - Highlight technological breakthroughs and market disruptions
 
-You must output your analysis wrapped in <bull_thesis> XML tags. Structure your thesis with:
+You MUST output your analysis in this EXACT structure:
+
+<key_points>
+- [3-5 bullet points summarizing your strongest arguments]
+</key_points>
+
+<bull_thesis>
+[Your detailed analysis covering:]
 1. Key growth drivers
 2. Competitive advantages
 3. Market opportunity size
 4. Why current concerns are overblown
+</bull_thesis>
 
 Be persuasive and confident in your bullish stance.""",
 
@@ -65,18 +73,26 @@ Your mandate:
 - Challenge optimistic assumptions with hard data
 - Highlight valuation concerns and market saturation
 
-You must output your analysis wrapped in <bear_thesis> XML tags. Structure your thesis with:
+You MUST output your analysis in this EXACT structure:
+
+<key_points>
+- [3-5 bullet points summarizing your strongest arguments]
+</key_points>
+
+<bear_thesis>
+[Your detailed analysis covering:]
 1. Valuation concerns
 2. Competitive threats and market risks
 3. Regulatory or macroeconomic headwinds
 4. Why the bulls are wrong
+</bear_thesis>
 
 Be critical and rigorous in your bearish stance.""",
 
         AgentRole.PORTFOLIO_MANAGER: """You are an experienced Portfolio Manager and the final decision maker.
 
 Your mandate:
-- Read and analyze both the Bull Thesis and Bear Thesis carefully
+- Read and analyze both the Bull and Bear key points carefully
 - Weigh the evidence objectively without bias
 - Consider both upside potential and downside risks
 - Make a clear, decisive recommendation
@@ -174,36 +190,61 @@ Be balanced but decisive. Don't hedge excessively."""
         )
 
 
+def extract_key_points(response_content: str) -> str:
+    """
+    Extract key points from an agent's response.
+
+    Args:
+        response_content: Full response content with XML tags
+
+    Returns:
+        Extracted key points or abbreviated content if tags not found
+    """
+    import re
+    pattern = r"<key_points>(.*?)</key_points>"
+    match = re.search(pattern, response_content, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    # Fallback: return first 500 chars if no key_points found
+    return response_content[:500] + "..." if len(response_content) > 500 else response_content
+
+
 class BullAgent(Agent):
     """The Bull - Growth-focused aggressive investor"""
 
     def __init__(self, llm_provider: str = "anthropic"):
         super().__init__(AgentRole.BULL, llm_provider)
 
-    def analyze(self, financial_data: str, bear_thesis: str | None = None) -> AgentResponse:
+    def analyze(
+        self,
+        financial_data: str,
+        bear_thesis: str | None = None,
+        use_key_points_only: bool = True
+    ) -> AgentResponse:
         """
         Analyze stock data from a bullish perspective.
 
         Args:
             financial_data: Formatted financial metrics
             bear_thesis: Optional bear thesis to counter
+            use_key_points_only: If True, extract only key points for rebuttals (saves tokens)
 
         Returns:
             AgentResponse with bull thesis
         """
         if bear_thesis:
-            prompt = f"""{financial_data}
+            # For rebuttals, use key points only to save tokens
+            bear_points = extract_key_points(bear_thesis) if use_key_points_only else bear_thesis
 
----
-BEAR'S COUNTERARGUMENT TO ADDRESS:
-{bear_thesis}
+            prompt = f"""Stock: {financial_data.split('|')[0].strip()}
 
----
-Now provide your REBUTTAL and reinforced bull thesis, addressing the bear's concerns."""
+BEAR'S KEY ARGUMENTS TO COUNTER:
+{bear_points}
+
+Provide your REBUTTAL addressing these concerns. Reinforce your bullish thesis."""
         else:
             prompt = f"""{financial_data}
 
----
 Analyze this stock and provide your bullish investment thesis."""
 
         return self.invoke(prompt)
@@ -215,30 +256,36 @@ class BearAgent(Agent):
     def __init__(self, llm_provider: str = "anthropic"):
         super().__init__(AgentRole.BEAR, llm_provider)
 
-    def analyze(self, financial_data: str, bull_thesis: str | None = None) -> AgentResponse:
+    def analyze(
+        self,
+        financial_data: str,
+        bull_thesis: str | None = None,
+        use_key_points_only: bool = True
+    ) -> AgentResponse:
         """
         Analyze stock data from a bearish perspective.
 
         Args:
             financial_data: Formatted financial metrics
             bull_thesis: Optional bull thesis to counter
+            use_key_points_only: If True, extract only key points for rebuttals (saves tokens)
 
         Returns:
             AgentResponse with bear thesis
         """
         if bull_thesis:
-            prompt = f"""{financial_data}
+            # For rebuttals, use key points only to save tokens
+            bull_points = extract_key_points(bull_thesis) if use_key_points_only else bull_thesis
 
----
-BULL'S COUNTERARGUMENT TO ADDRESS:
-{bull_thesis}
+            prompt = f"""Stock: {financial_data.split('|')[0].strip()}
 
----
-Now provide your REBUTTAL and reinforced bear thesis, addressing the bull's overoptimism."""
+BULL'S KEY ARGUMENTS TO COUNTER:
+{bull_points}
+
+Provide your REBUTTAL addressing this overoptimism. Reinforce your bearish thesis."""
         else:
             prompt = f"""{financial_data}
 
----
 Analyze this stock and provide your bearish investment thesis."""
 
         return self.invoke(prompt)
@@ -254,7 +301,8 @@ class PortfolioManagerAgent(Agent):
         self,
         financial_data: str,
         bull_thesis: str,
-        bear_thesis: str
+        bear_thesis: str,
+        use_key_points_only: bool = True
     ) -> AgentResponse:
         """
         Make final investment decision based on both theses.
@@ -263,21 +311,23 @@ class PortfolioManagerAgent(Agent):
             financial_data: Formatted financial metrics
             bull_thesis: The bull's argument
             bear_thesis: The bear's argument
+            use_key_points_only: If True, use only key points from theses (saves tokens)
 
         Returns:
             AgentResponse with final decision
         """
+        # Extract key points to reduce token usage
+        bull_points = extract_key_points(bull_thesis) if use_key_points_only else bull_thesis
+        bear_points = extract_key_points(bear_thesis) if use_key_points_only else bear_thesis
+
         prompt = f"""{financial_data}
 
----
-BULL THESIS:
-{bull_thesis}
+BULL'S KEY ARGUMENTS:
+{bull_points}
 
----
-BEAR THESIS:
-{bear_thesis}
+BEAR'S KEY ARGUMENTS:
+{bear_points}
 
----
 As Portfolio Manager, weigh both arguments and make your final decision: BUY, SELL, or HOLD.
 Provide clear justification for your choice."""
 

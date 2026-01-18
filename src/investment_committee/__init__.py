@@ -11,6 +11,7 @@ from .agents import (
     Decision,
     PortfolioDecision,
     PortfolioManagerAgent,
+    extract_key_points,
 )
 from .config import AppConfig, LLMConfig
 from .tools import FinancialMetrics, format_metrics_for_agent, get_financial_metrics
@@ -29,6 +30,7 @@ __all__ = [
     "FinancialMetrics",
     "get_financial_metrics",
     "format_metrics_for_agent",
+    "extract_key_points",
     "LLMConfig",
     "AppConfig",
 ]

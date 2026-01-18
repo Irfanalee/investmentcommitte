@@ -128,12 +128,37 @@ def get_financial_metrics(ticker: str) -> FinancialMetrics:
             )
 
 
-def format_metrics_for_agent(metrics: FinancialMetrics) -> str:
+def _format_market_cap(market_cap: float | None) -> str:
+    """Format market cap in human-readable form (B/T)"""
+    if not market_cap:
+        return "N/A"
+    if market_cap >= 1_000_000_000_000:
+        return f"${market_cap / 1_000_000_000_000:.2f}T"
+    elif market_cap >= 1_000_000_000:
+        return f"${market_cap / 1_000_000_000:.1f}B"
+    elif market_cap >= 1_000_000:
+        return f"${market_cap / 1_000_000:.1f}M"
+    return f"${market_cap:,.0f}"
+
+
+def _format_volume(volume: int | None) -> str:
+    """Format volume in human-readable form (K/M)"""
+    if not volume:
+        return "N/A"
+    if volume >= 1_000_000:
+        return f"{volume / 1_000_000:.1f}M"
+    elif volume >= 1_000:
+        return f"{volume / 1_000:.1f}K"
+    return f"{volume:,}"
+
+
+def format_metrics_for_agent(metrics: FinancialMetrics, compressed: bool = True) -> str:
     """
-    Format financial metrics into a clean text block for LLM consumption.
+    Format financial metrics into a text block for LLM consumption.
 
     Args:
         metrics: FinancialMetrics object
+        compressed: If True, use compact format (~50% fewer tokens)
 
     Returns:
         Formatted string with all relevant data
@@ -141,6 +166,31 @@ def format_metrics_for_agent(metrics: FinancialMetrics) -> str:
     if metrics.error:
         return f"ERROR: {metrics.error}"
 
+    if compressed:
+        # Compressed format: ~250 tokens vs ~500 tokens
+        price = f"${metrics.current_price:.2f}" if metrics.current_price else "N/A"
+        pe = f"{metrics.pe_ratio:.1f}" if metrics.pe_ratio else "N/A"
+        mcap = _format_market_cap(metrics.market_cap)
+        high = f"${metrics.week_52_high:.2f}" if metrics.week_52_high else "N/A"
+        low = f"${metrics.week_52_low:.2f}" if metrics.week_52_low else "N/A"
+        vol = _format_volume(metrics.volume)
+        avg_vol = _format_volume(metrics.avg_volume)
+
+        output = f"""{metrics.ticker} | Price: {price} | P/E: {pe} | MCap: {mcap}
+52-Week Range: {low} - {high} | Volume: {vol} (avg: {avg_vol})
+News: """
+
+        # Compact news (first 3 headlines, truncated)
+        news_items = []
+        for i, headline in enumerate(metrics.news_headlines[:3], 1):
+            # Truncate long headlines
+            truncated = headline[:80] + "..." if len(headline) > 80 else headline
+            news_items.append(f"({i}) {truncated}")
+        output += " ".join(news_items)
+
+        return output
+
+    # Original verbose format (kept for backwards compatibility)
     output = f"""
 FINANCIAL DATA FOR {metrics.ticker}
 {'=' * 50}

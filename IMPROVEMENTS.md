@@ -5,6 +5,7 @@
 - Add other sources for financial sentiments data
 - put in mechanism to handle API overusage , reduce the tokens sent to the API
 - Add webinterface for showing things on a web page. 
+- Add redis for caching. 
 
 
 ## 🎯 Priority 1: Structured Conversation Memory (HIGH)
