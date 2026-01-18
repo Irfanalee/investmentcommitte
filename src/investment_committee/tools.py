@@ -1,5 +1,5 @@
 """
-Data Layer: Financial data fetching using yfinance
+Data Layer: Financial data fetching using yfinance with caching support.
 """
 import os
 import sys
@@ -8,6 +8,8 @@ from datetime import datetime
 
 import yfinance as yf
 from pydantic import BaseModel, Field
+
+from .cache import CacheConfig, get_cache
 
 
 @contextmanager
@@ -35,23 +37,50 @@ class FinancialMetrics(BaseModel):
     news_headlines: list[str] = Field(default_factory=list)
     fetch_timestamp: datetime = Field(default_factory=datetime.now)
     error: str | None = None
+    from_cache: bool = False  # Indicates if data was loaded from cache
 
 
-def get_financial_metrics(ticker: str) -> FinancialMetrics:
+def get_financial_metrics(
+    ticker: str,
+    use_cache: bool = True,
+    cache_ttl_hours: int | None = None
+) -> FinancialMetrics:
     """
     Fetch comprehensive financial metrics for a given stock ticker.
 
+    Uses file-based caching to reduce API calls. Cached data is used if:
+    - Cache is enabled (use_cache=True)
+    - Valid cached data exists and hasn't expired
+
     Args:
         ticker: Stock ticker symbol (e.g., "NVDA", "AAPL", "SAAB-B.ST")
+        use_cache: Whether to use cached data if available (default: True)
+        cache_ttl_hours: Custom TTL for this request (default: uses cache config)
 
     Returns:
         FinancialMetrics object with all available data
     """
+    cache = get_cache()
+    cache_key = ticker.upper()
+
+    # Try to get from cache first
+    if use_cache:
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            # Reconstruct FinancialMetrics from cached dict
+            cached_data["from_cache"] = True
+            # Parse the timestamp back to datetime
+            if "fetch_timestamp" in cached_data:
+                cached_data["fetch_timestamp"] = datetime.fromisoformat(
+                    cached_data["fetch_timestamp"]
+                )
+            return FinancialMetrics(**cached_data)
+
+    # Cache miss or disabled - fetch from yfinance
     try:
         # Auto-correct common international ticker formats
         # Swedish stocks (e.g., SAAB-B -> SAAB-B.ST)
         if '-' in ticker and '.' not in ticker:
-            # Try adding Stockholm exchange suffix
             ticker_variants = [ticker, f"{ticker}.ST"]
         else:
             ticker_variants = [ticker]
@@ -108,8 +137,16 @@ def get_financial_metrics(ticker: str) -> FinancialMetrics:
             market_cap=info.get('marketCap'),
             volume=info.get('volume'),
             avg_volume=info.get('averageVolume'),
-            news_headlines=headlines if headlines else ["No recent news available"]
+            news_headlines=headlines if headlines else ["No recent news available"],
+            from_cache=False
         )
+
+        # Store in cache (only successful fetches, not errors)
+        if use_cache and not metrics.error:
+            cache_data = metrics.model_dump()
+            # Convert datetime to ISO format for JSON serialization
+            cache_data["fetch_timestamp"] = metrics.fetch_timestamp.isoformat()
+            cache.set(cache_key, cache_data, ttl_hours=cache_ttl_hours)
 
         return metrics
 

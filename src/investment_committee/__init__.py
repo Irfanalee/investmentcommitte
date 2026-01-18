@@ -13,7 +13,8 @@ from .agents import (
     PortfolioManagerAgent,
     extract_key_points,
 )
-from .config import AppConfig, LLMConfig
+from .cache import CacheConfig, FileCache, get_cache
+from .config import AppConfig, CacheSettings, LLMConfig
 from .tools import FinancialMetrics, format_metrics_for_agent, get_financial_metrics
 
 __version__ = "1.0.0"
@@ -33,4 +34,8 @@ __all__ = [
     "extract_key_points",
     "LLMConfig",
     "AppConfig",
+    "CacheSettings",
+    "CacheConfig",
+    "FileCache",
+    "get_cache",
 ]

@@ -48,9 +48,26 @@ class LLMConfig(BaseModel):
         return self.anthropic_model
 
 
+class CacheSettings(BaseModel):
+    """Cache configuration settings"""
+    enabled: bool = Field(default=True)
+    cache_dir: str = Field(default=".cache/investment_committee")
+    ttl_hours: int = Field(default=24)  # Default: 24 hour cache
+
+    @classmethod
+    def from_env(cls) -> "CacheSettings":
+        """Load cache configuration from environment variables"""
+        return cls(
+            enabled=os.getenv("CACHE_ENABLED", "true").lower() == "true",
+            cache_dir=os.getenv("CACHE_DIR", ".cache/investment_committee"),
+            ttl_hours=int(os.getenv("CACHE_TTL_HOURS", "24"))
+        )
+
+
 class AppConfig(BaseModel):
     """Application configuration"""
     llm: LLMConfig
+    cache: CacheSettings = Field(default_factory=CacheSettings)
     enable_rebuttal: bool = Field(default=True)
     max_retries: int = Field(default=3)
     timeout: int = Field(default=60)
@@ -60,6 +77,7 @@ class AppConfig(BaseModel):
         """Load full application configuration"""
         return cls(
             llm=LLMConfig.from_env(),
+            cache=CacheSettings.from_env(),
             enable_rebuttal=os.getenv("ENABLE_REBUTTAL", "true").lower() == "true",
             max_retries=int(os.getenv("MAX_RETRIES", "3")),
             timeout=int(os.getenv("TIMEOUT", "60"))

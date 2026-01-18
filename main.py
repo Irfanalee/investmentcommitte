@@ -254,9 +254,12 @@ def run_investment_committee(ticker: str, providers: dict):
     """
     console.print(f"\n[bold cyan]🔍 Analyzing {ticker.upper()}...[/bold cyan]\n")
 
-    # STEP 1: Fetch financial data
-    with console.status("[bold green]Fetching financial data from yfinance..."):
+    # STEP 1: Fetch financial data (with caching)
+    with console.status("[bold green]Fetching financial data..."):
         metrics = get_financial_metrics(ticker)
+
+    if metrics.from_cache:
+        console.print(f"[dim]Using cached data (fetched: {metrics.fetch_timestamp.strftime('%Y-%m-%d %H:%M')})[/dim]")
 
     if metrics.error:
         console.print(Panel(
